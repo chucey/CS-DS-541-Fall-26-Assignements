@@ -110,7 +110,7 @@ def plot_loss_curves(x_train: np.ndarray, y_train: np.ndarray, alphas: list[floa
     plt.ylabel('Loss')
     plt.legend()
     plt.grid()
-    plt.savefig('HW1/loss_curves.png')
+    plt.savefig('HW1/loss_curves.pdf')
 
 def main():
     """
