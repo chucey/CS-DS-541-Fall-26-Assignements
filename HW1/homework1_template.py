@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def gradient_descent(x_train, y_train, w0, alpha, num_steps):
   """
@@ -18,6 +19,9 @@ def gradient_descent(x_train, y_train, w0, alpha, num_steps):
   # Your code here (~2 lines)
   x_train_copy = np.copy(x_train)
   y_train_copy = np.copy(y_train)
+  w0 = np.copy(w0)
+
+  losses = []
 
   for i in range(num_steps):
 
@@ -25,6 +29,7 @@ def gradient_descent(x_train, y_train, w0, alpha, num_steps):
     # Your code here
     y_hat = np.dot(x_train_copy, w0)
     loss = np.mean((y_hat - y_train_copy) ** 2)
+    losses.append(loss)
     
     # Placeholder for loss, remove after implementing
     # loss = 0 
@@ -36,10 +41,11 @@ def gradient_descent(x_train, y_train, w0, alpha, num_steps):
     w0 -= alpha * gradient
     w = w0
 
-  return w
+
+  return w, losses
 
 
-def train_linear_regression(x_train, y_train):
+def train_linear_regression(x_train, y_train, alpha=0.01):
     """
     Initializes and trains a linear regression model.
 
@@ -54,9 +60,10 @@ def train_linear_regression(x_train, y_train):
     np.random.seed(541)
     
     # Initialize weights (~2 lines)
-    # Your code here
+    # Your code here 
+
     w0 = np.random.randn(x_train.shape[1])
-    b = np.random.randn(1)
+    # b = np.random.randn(1)
 
     # Placeholder for w0, remove after implementing
     # w0 = np.zeros(x_train.shape[1])
@@ -64,7 +71,7 @@ def train_linear_regression(x_train, y_train):
 
     # Make initial prediction (~1 line)
     # Your code here
-    y_pred = np.dot(x_train, w0) + b
+    y_pred = np.dot(x_train, w0)
 
     # Placeholder for y_pred, remove after implementing
     # y_pred = np.zeros(y_train.shape)
@@ -81,9 +88,29 @@ def train_linear_regression(x_train, y_train):
     print(f'Training loss = {loss:.3f}')
 
     # Run gradient descent
-    w = gradient_descent(x_train, y_train, w0, 2e-3, 100)
+    w, losses = gradient_descent(x_train, y_train, w0, alpha, 100)
 
-    return w
+    return w, losses
+
+def plot_loss_curves(x_train: np.ndarray, y_train: np.ndarray, alphas: list[float]):
+    """
+    Plots the loss curves for different learning rates.
+
+    Args:
+      alphas (list of float): The learning rates to evaluate.
+    """
+    plt.figure(figsize=(10, 6))
+    for alpha in alphas:
+        # Train model with the given alpha
+        w, losses = train_linear_regression(x_train, y_train, alpha=alpha)
+        plt.plot(losses, label=f'alpha={alpha}')
+    
+    plt.title('Loss Curves for Different Learning Rates')
+    plt.xlabel('Iteration')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid()
+    plt.savefig('HW1/loss_curves.png')
 
 def main():
     """
@@ -92,8 +119,8 @@ def main():
     # Load data from files
     # Make sure you have the .npy files in the same directory as this script
     try:
-        X_tr = np.reshape(np.load("HW1/age_regression/age_regression_Xte.npy"), (-1, 48*48))
-        ytr = np.load("HW1/age_regression/age_regression_ytr.npy")[:2500]
+        X_tr = np.reshape(np.load("HW1/age_regression/age_regression_Xtr.npy"), (-1, 48*48))
+        ytr = np.load("HW1/age_regression/age_regression_ytr.npy")
         X_te = np.reshape(np.load("HW1/age_regression/age_regression_Xte.npy"), (-1, 48*48))
         yte = np.load("HW1/age_regression/age_regression_yte.npy")
         print(X_tr.shape, ytr.shape, X_te.shape, yte.shape)
@@ -107,8 +134,12 @@ def main():
     # Your code here
 
     print("Normalizing the features...")
-    X_tr = X_tr / 255.
-    X_te = X_te / 255.
+    # train_mean = np.mean(X_tr, axis=0)
+    # train_std = np.std(X_tr, axis=0)
+    # train_std[train_std == 0] = 1.0
+
+    # X_tr = (X_tr - train_mean) / train_std
+    # X_te = (X_te - train_mean) / train_std
     print("Feature normalization complete.")
     
 
@@ -123,7 +154,7 @@ def main():
 
     # Train model
     print("Training the linear regression model...")
-    w = train_linear_regression(X_tr, ytr)
+    w, losses = train_linear_regression(X_tr, ytr, alpha=2e-4)
 
     # Report fMSE cost on the training and testing data (separately)
     # Your code here (~4-6 lines)
@@ -131,6 +162,7 @@ def main():
     test_loss = np.mean((np.dot(X_te, w) - yte) ** 2)
     print(f'Training loss after training = {train_loss:.3f}')
     print(f'Testing loss after training = {test_loss:.3f}')
+    plot_loss_curves(X_tr, ytr, alphas=[1e-4, 2e-4, 5e-5])
     
 
 
