@@ -165,8 +165,7 @@ def main():
     print(f'Training loss after training = {train_loss:.3f}')
     print(f'Testing loss after training = {test_loss:.3f}')
     plot_loss_curves(X_tr, ytr, alphas=[1e-4, 2e-4, 5e-5])
-    
-
+  
 
 # Run main
 if __name__ == "__main__":
