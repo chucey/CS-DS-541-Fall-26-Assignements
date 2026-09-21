@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import matplotlib.pyplot as plt
 import tqdm
+import time
 
 
 def build_mlp(input_dim, n_layers, hidden_units, output_dim):
@@ -16,6 +17,13 @@ def build_mlp(input_dim, n_layers, hidden_units, output_dim):
     """
     layers = []
     # BEGIN YOUR CODE HERE (~5-6 lines)
+    for i in range(n_layers):
+        if i == 0:
+            layers.append(nn.Linear(input_dim, hidden_units))
+        else:
+            layers.append(nn.Linear(hidden_units, hidden_units))
+        layers.append(nn.ReLU())
+    layers.append(nn.Linear(hidden_units, output_dim))
     # END YOUR CODE HERE
     return nn.Sequential(*layers)
 
@@ -38,6 +46,11 @@ def train_epoch(model, loader, criterion, optimizer):
     running_loss = 0.0
     for X, y in loader:
         # BEGIN YOUR CODE HERE (~5-7 lines)
+        logits = model(X)
+        loss = criterion(logits, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         # END YOUR CODE HERE
         running_loss += loss.item() * X.size(0)
 
@@ -54,7 +67,10 @@ def evaluate(model, loader):
     with torch.no_grad():
         for X, y in loader:
             # BEGIN YOUR CODE HERE (~4 lines)
-            pass
+            logits = model(X)
+            predictions = torch.argmax(logits, dim=1)
+            total += y.size(0)
+            correct += (predictions == y).sum().item()
             # END YOUR CODE HERE
 
     return correct / total
@@ -64,7 +80,9 @@ def compute_loss(model, loader, criterion):
     running_loss = 0.0
     for X, y in loader:
         # BEGIN YOUR CODE HERE (~3 lines)
-        pass
+        logits = model(X)
+        loss = criterion(logits, y)
+        running_loss += loss.item() * X.size(0)
         # END YOUR CODE HERE
     return running_loss / len(loader.dataset)
 
@@ -82,16 +100,49 @@ def hyperparam_tuning(train_dataset, val_dataset, seed=541):
     best_cfg = None
     best_acc = 0.0
     # BEGIN YOUR CODE HERE (~15-20 lines)
+    hidden_layers = [3, 4, 5]
+    hidden_units = [30, 40, 50]
+    learning_rates = [0.01, 0.001, 0.0001]
+    batch_sizes = [32, 64] 
+    epochs = 10
+
+    for n_layers in hidden_layers:
+        for hidden_unit in hidden_units:
+            for lr in learning_rates:
+                for batch_size in batch_sizes:
+                    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+                    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+                    model = build_mlp(input_dim=784, n_layers=n_layers, hidden_units=hidden_unit, output_dim=10)
+                    criterion = nn.CrossEntropyLoss()
+                    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
+                    for epoch in tqdm(range(epochs), desc=f"Training model with layers={n_layers}, units={hidden_unit}, lr={lr}, batch_size={batch_size}"):
+                        train_epoch(model, train_loader, criterion, optimizer)
+
+                    val_acc = evaluate(model, val_loader)
+
+                    if val_acc > best_acc:
+                        best_acc = val_acc
+                        best_cfg = {
+                            'n_layers': n_layers,
+                            'hidden_units': hidden_unit,
+                            'lr': lr,
+                            'batch_size': batch_size
+                        }
+                        # best_cfg = model.state_dict()  # Store the best model's state_dict
+
+
     # END YOUR CODE HERE
 
     return best_cfg, best_acc
 
 
 # Load data (numpy arrays assumed present in workspace)
-X_train = np.load("fashion_mnist_train_images.npy").astype(np.float32) / 255.0
-y_train = np.load("fashion_mnist_train_labels.npy").astype(np.int64)
-X_test = np.load("fashion_mnist_test_images.npy").astype(np.float32) / 255.0
-y_test = np.load("fashion_mnist_test_labels.npy").astype(np.int64)
+X_train = np.load("Problem2/data/fashion_mnist_train_images.npy").astype(np.float32) / 255.0
+y_train = np.load("Problem2/data/fashion_mnist_train_labels.npy").astype(np.int64)
+X_test = np.load("Problem2/data/fashion_mnist_test_images.npy").astype(np.float32) / 255.0
+y_test = np.load("Problem2/data/fashion_mnist_test_labels.npy").astype(np.int64)
 
 # Flatten if images are HxW
 if X_train.ndim == 3:
@@ -124,7 +175,7 @@ n_features = X_train.shape[1]
 n_classes = int(y_train.max() + 1)
 # Instantiate the best model
 # BEGIN YOUR CODE HERE (~3 lines)
-# END YOUR CODE HERE
+best_model = build_mlp(input_dim=n_features, n_layers=best_cfg['n_layers'], hidden_units=best_cfg['hidden_units'], output_dim=n_classes)
 
 # create full training loader and test loader
 batch_size = full_train.shape[0]
@@ -138,6 +189,11 @@ epochs_final = 50
 parameter_history = []  # To store the history of parameters
 for epoch in range(epochs_final):
     # BEGIN YOUR CODE HERE (~2 lines)
+    t0 = time.time()
+    loss, all_params = train_epoch(best_model, full_train_loader, criterion, optimizer)
+    parameter_history.append(all_params)  # Store the parameters after each epoch
+    test_acc = evaluate(best_model, test_loader)
+    t1 = time.time()
     # END YOUR CODE HERE
     print(f"Final Train Epoch {epoch+1}/{epochs_final}: loss={loss:.4f}, test_acc={test_acc:.4f}, time={t1-t0:.1f}s")
 
